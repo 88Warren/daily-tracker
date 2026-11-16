@@ -9,7 +9,7 @@ on:
 # ── Repo-specific config ──────────────────────────────────────────────────────
 env:
   IMAGE_NAME:  lmwcode/tracker
-  HEALTH_URL:  http://${{ secrets.VPS_HOST }}:3001/api/health
+  HEALTH_URL:  https://tracker.lmwrecovery.co.uk/api/health
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -121,26 +121,21 @@ jobs:
           key:      ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -euo pipefail
-            cd /opt/tracker
-
-            echo "── Pulling new image ──────────────────────────────"
-            docker compose pull
-
-            echo "── Restarting container ───────────────────────────"
-            docker compose up -d --force-recreate
-
-            echo "── Pruning old images ─────────────────────────────"
-            docker image prune -f
+            helm upgrade --install tracker-release \
+              /opt/lmwrecovery/lmwrecovery-helmcharts/tracker \
+              --namespace lmw-recovery \
+              -f /opt/lmwrecovery/lmwrecovery-helmcharts/tracker/secrets.prod.yaml \
+              --set app.image.tag=${{ steps.tag.outputs.VERSION }} \
+              --reuse-values
 
       # ── 9. Post-deploy health check ───────────────────────────────────────────
-      - name: Wait for container to start
-        run: sleep 20
+      - name: Wait for rollout
+        run: sleep 30
 
       - name: Health check
         run: |
           echo "Running health check against ${{ env.HEALTH_URL }}..."
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -u "${{ secrets.BASIC_AUTH_USER }}:${{ secrets.BASIC_AUTH_PASS }}" \
             --max-time 15 --retry 3 --retry-delay 5 \
             ${{ env.HEALTH_URL }} 2>&1) || STATUS="curl_error_$?"
           echo "Health check status: $STATUS"

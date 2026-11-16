@@ -103,8 +103,8 @@ git push origin v1.0.0
 2. **deploy** job (only runs if check passes):
    - Builds a `linux/amd64` image and scans it with Trivy (blocks on CRITICAL CVEs)
    - Builds and pushes a multi-arch (`amd64` + `arm64`) image to Docker Hub as `lmwcode/tracker:v1.0.0` and `:latest`
-   - SSHs into the VPS, pulls the new image, restarts the container
-   - Runs a health check against `/api/health`
+   - SSHs into the VPS and runs `helm upgrade` to roll the new image tag into the Kubernetes cluster
+   - Health checks `https://tracker.lmwrecovery.co.uk/api/health`
 
 ### GitHub secrets required
 
@@ -115,53 +115,54 @@ Add these in **Settings → Secrets and variables → Actions**:
 | `DOCKER_USERNAME` | Your Docker Hub username (`lmwcode`) |
 | `DOCKER_TOKEN` | Docker Hub access token (not your password) |
 | `VPS_HOST` | IP address of your VPS |
-| `VPS_USER` | SSH user on the VPS (e.g. `ubuntu`) |
+| `VPS_USER` | SSH user on the VPS |
 | `VPS_SSH_KEY` | Private SSH key for the VPS user |
-| `BASIC_AUTH_USER` | Username for the app's login prompt |
-| `BASIC_AUTH_PASS` | Password for the app's login prompt |
 
 Dependabot is configured to open PRs weekly for npm and GitHub Actions updates.
 
 ---
 
-## VPS first-time setup
+## Deployment (Kubernetes / Helm)
 
-SSH into your VPS and run:
+The app runs on the same k3s cluster as lmw-recovery, served at `tracker.lmwrecovery.co.uk`. The Helm chart lives in the `lmwrecovery-helmcharts` repo under `tracker/`.
 
-```bash
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
+### DNS
 
-# Create the app directory
-sudo mkdir -p /opt/tracker
-sudo chown $USER:$USER /opt/tracker
-cd /opt/tracker
+Add an A record in your DNS provider:
 
-# Create the .env file (the pipeline uses these at runtime)
-cat > .env << 'EOF'
-BASIC_AUTH_USER=your_username
-BASIC_AUTH_PASS=your_password
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://YOUR_VPS_IP:3001/api/calendar/callback
-EOF
-
-# Copy docker-compose.yml from the repo (or paste it in)
-# Then pull and start:
-docker compose pull
-docker compose up -d
+```
+tracker.lmwrecovery.co.uk → <VPS IP>
 ```
 
-After the first deploy, all subsequent deploys happen automatically when you push a version tag. To redeploy manually (e.g. after editing `.env`), run `./deploy.sh` from `/opt/tracker`.
+cert-manager on the cluster will automatically issue a Let's Encrypt TLS certificate for the subdomain.
+
+### First deploy (run once on the VPS)
+
+```bash
+# Create the secrets file (never commit this)
+cat > /opt/lmwrecovery/lmwrecovery-helmcharts/tracker/secrets.prod.yaml << 'EOF'
+secrets:
+  basicAuthUser: "your_username"
+  basicAuthPass: "your_password"
+  googleClientId: "your_google_client_id"
+  googleClientSecret: "your_google_client_secret"
+EOF
+
+# Deploy the chart
+helm upgrade --install tracker-release \
+  /opt/lmwrecovery/lmwrecovery-helmcharts/tracker \
+  --namespace lmw-recovery \
+  -f /opt/lmwrecovery/lmwrecovery-helmcharts/tracker/secrets.prod.yaml
+```
+
+After that, all deploys happen automatically on `git tag` push.
 
 ---
 
-## Callback URL for Google Calendar
+## Google Calendar callback URL
 
-When you get a domain, update this in `.env` on the VPS and in the Google Cloud Console OAuth settings:
+Update this in `secrets.prod.yaml` on the VPS and in the Google Cloud Console OAuth settings:
 
-| Integration | Callback URL |
+| Setting | Value |
 |---|---|
-| Google Calendar | `https://yourdomain.com/api/calendar/callback` |
+| Authorised redirect URI | `https://tracker.lmwrecovery.co.uk/api/calendar/callback` |
