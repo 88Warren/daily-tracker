@@ -24,7 +24,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^22.7.5",
+    "@types/node": "^26.6.6",
     "@types/supertest": "^6.0.2",
     "jest": "^30.5.2",
     "supertest": "^7.0.0",
