@@ -15,7 +15,8 @@ COPY package.json package-lock.json ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
 
-RUN npm ci --workspace=client --ignore-scripts
+# Install all deps including devDependencies — vite and tsc live in devDependencies
+RUN npm ci --workspace=client
 
 COPY client/ ./client/
 RUN npm run build --workspace=client
@@ -29,7 +30,8 @@ COPY package.json package-lock.json ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
 
-RUN npm ci --workspace=server --ignore-scripts
+# Install all deps including devDependencies — tsc lives in devDependencies
+RUN npm ci --workspace=server
 
 COPY server/ ./server/
 RUN npm run build --workspace=server
