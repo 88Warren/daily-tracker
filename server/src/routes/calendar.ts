@@ -12,7 +12,36 @@
 import { Router, Request, Response } from 'express'
 import { google } from 'googleapis'
 import { getDb } from '../db/database'
-import { format, addDays, startOfDay, endOfDay } from 'date-fns'
+
+// ── Plain date helpers (avoids a date-fns dependency on the server) ───────────
+
+function startOfDay(d: Date): Date {
+  const r = new Date(d)
+  r.setHours(0, 0, 0, 0)
+  return r
+}
+
+function endOfDay(d: Date): Date {
+  const r = new Date(d)
+  r.setHours(23, 59, 59, 999)
+  return r
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
+function formatDateLabel(iso: string, isAllDay: boolean): string {
+  const d = new Date(iso)
+  if (isAllDay) {
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  }
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return `${date} · ${time}`
+}
 
 const router = Router()
 
@@ -163,7 +192,7 @@ router.get('/today', async (req: Request, res: Response) => {
       start,
       end,
       all_day:   isAllDay,
-      date_label: start ? format(new Date(start), isAllDay ? 'd MMM' : 'd MMM · HH:mm') : '',
+      date_label: start ? formatDateLabel(start, isAllDay) : '',
       location:  e.location || null,
       color:     e.colorId  || null,
     }
