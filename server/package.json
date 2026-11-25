@@ -11,7 +11,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^13.2.0",
     "cors": "^2.8.5",
     "dotenv": "^18.0.10",
     "express": "^4.21.1",
