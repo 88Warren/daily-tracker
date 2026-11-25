@@ -3,6 +3,9 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/*.test.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: { strict: false } }],
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: { strict: false },
+      compiler: '@typescript/typescript6',
+    }],
   },
 }
