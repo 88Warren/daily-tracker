@@ -44,11 +44,14 @@ RUN apk upgrade --no-cache
 
 WORKDIR /app
 
-# Production server deps only
+# Production server deps only.
+# --ignore-scripts is intentionally omitted here so that better-sqlite3's
+# install script can locate its pre-built binding. We copy node_modules from
+# the build stage so the native .node file compiled there is already present.
+COPY --from=server-build /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/
 COPY server/package.json ./server/
-RUN npm ci --workspace=server --omit=dev --ignore-scripts
 
 # Copy built artifacts
 COPY --from=server-build /app/server/dist ./server/dist
