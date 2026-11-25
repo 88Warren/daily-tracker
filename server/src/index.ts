@@ -47,7 +47,7 @@ app.get('/api/health', (_req, res) => {
 
 // ── SPA fallback (production) ─────────────────────────────────────────────────
 if (IS_PROD) {
-  app.get('*', (_req, res) => {
+  app.get('*path', (_req, res) => {
     res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
   })
 }
