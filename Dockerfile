@@ -24,6 +24,9 @@ RUN npm run build --workspace=client
 # ── Stage 2: build Express server ─────────────────────────────────────────────
 FROM node:22-alpine AS server-build
 
+# Build tools required by better-sqlite3's native addon (node-gyp needs python3, make, g++)
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
